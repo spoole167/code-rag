@@ -1,0 +1,65 @@
+
+
+services:
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - rag-network
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - vector-db
+      - embedder
+      - llm-api
+    environment:
+      - VECTOR_DB_URL=http://vector-db:6333
+      - EMBEDDER_URL=http://embedder:5001
+      - LLM_API_URL=http://llm-api:8000
+    networks:
+      - rag-network
+
+  embedder:
+    build: ./embedder
+    ports:
+      - "5001:5001"
+    networks:
+      - rag-network
+
+  vector-db:
+    image: qdrant/qdrant
+    restart: always
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_data:/qdrant/storage
+    networks:
+      - rag-network
+
+  llm-api:
+    build: ./llm-api
+    restart: always
+    ports:
+      - "11434:11434"
+    networks:
+      - rag-network
+
+  repo-indexer:
+    build: ./repo-indexer
+    depends_on:
+      - vector-db
+      - embedder
+    environment:
+      - GIT_REPO_URL=https://github.com/WebGoat/WebGoat.git
+    networks:
+      - rag-network
+networks:
+  rag-network:
+    driver: bridge
